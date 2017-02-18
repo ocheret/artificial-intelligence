@@ -37,14 +37,12 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
 
-    # TODO: finish this function!
-    #raise NotImplementedError
     # Simple logic as described in the lectures
     if game.is_loser(player):
-        return float("-inf")
+        return NEGATIVE_INFINITY
 
     if game.is_winner(player):
-        return float("inf")
+        return INFINITY
 
     own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
@@ -258,5 +256,40 @@ class CustomPlayer:
             raise Timeout()
 
         # TODO: finish this function!
-        #raise NotImplementedError
-        return (0.0, (-1, -1))
+        best_move = (-1, -1)
+
+        player = game.active_player if maximizing_player else game.inactive_player
+
+        if depth == 0:
+            return (self.score(game, player), best_move)
+
+        moves = game.get_legal_moves()
+        if len(moves) == 0:
+            return (self.score(game, player), best_move)
+
+        if maximizing_player:
+            best_score = NEGATIVE_INFINITY
+            for move in moves:
+                forecast = game.forecast_move(move)
+                forecast_score, _ = self.alphabeta(forecast, depth - 1, alpha, beta, False)
+                if forecast_score > best_score:
+                    best_score = forecast_score
+                    best_move = move
+                    if best_score > alpha:
+                        alpha = best_score
+                        if beta <= alpha:
+                            break;
+        else:
+            best_score = INFINITY
+            for move in moves:
+                forecast = game.forecast_move(move)
+                forecast_score, _ = self.alphabeta(forecast, depth - 1, alpha, beta, True)
+                if forecast_score < best_score:
+                    best_score = forecast_score
+                    best_move = move
+                    if best_score < beta:
+                        beta = best_score
+                        if beta <= alpha:
+                            break;
+
+        return (best_score, best_move)
