@@ -17,7 +17,44 @@ class Timeout(Exception):
     pass
 
 
-def custom_score_3(game, player):
+def score_two_moves_ahead(game, player, factor):
+    """
+    Based on isolation.get_legal_moves() this function figures out all of the open squares that a player could possibly
+    move to within the next 2 moves (ignoring opponent's moves) and computes a score based on a weighted sum of the
+    number of results from one and two moves ahead.
+    :param game: `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+    :param player:  object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+    :param factor: float
+        The final score will be m1 + (factor * m2) where m1 = number of spots availabe to move to in 1 move and
+        m2 = number of spots available to move to in 2 moves
+    :return: float
+        The weighted sum of the numver of spots available in 1 move and in 2 moves.
+    """
+    r, c = game.get_player_location(player)
+
+    first_moves = [(-2, -1), (-2, 1), (-1, -2), (-1, 2),
+                   (1, -2), (1, 2), (2, -1), (2, 1)]
+    second_moves = [(-4, -2), (-4, 0), (-4, 2),
+                    (-3, -3), (-3, -1), (-3, 1), (-3, 3),
+                    (-2, -4), (-2, 0), (-2, 4),
+                    (-1, -3), (-1, -1), (-1, 1), (-1, 3),
+                    (0, -4), (0, -2), (0, 2), (0, 4),
+                    (1, -3), (1, -1), (1, 1), (1, 3),
+                    (2, -4), (2, 0), (2, 4),
+                    (3, -3), (3, -1), (3, 1), (3, 3),
+                    (4, -2), (4, 0), (4, 2)]
+
+    valid_first_moves = [(r + dr, c + dc) for dr, dc in first_moves if game.move_is_legal((r + dr, c + dc))]
+    valid_second_moves = [(r + dr, c + dc) for dr, dc in second_moves if game.move_is_legal((r + dr, c + dc))]
+
+    return len(valid_first_moves) + len(valid_second_moves) * factor
+
+
+def heuristic_a(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -37,8 +74,43 @@ def custom_score_3(game, player):
         The heuristic value of the current game state to the specified player.
     """
 
-    # Heuristic #3 - Compute the difference between the number of legal moves available to the players. Increase
-    # the score by the sum of every opponenet's move that might be occupied by a player's move. Leaves with winning or
+    # Heuristic A - Computes all possible moves for 1 and 2 moves ahead for each player and computes the difference.
+    # A weighting factor is applied to future moves to represent the uncertainty of the unknown outcome of the first
+    # move. Leaves with winning or losing positions are scored +inf and -inf respectively.
+    if game.is_loser(player):
+        return NEGATIVE_INFINITY
+
+    if game.is_winner(player):
+        return INFINITY
+
+    player_score = score_two_moves_ahead(game, player, 0.9)
+    opponent_score = score_two_moves_ahead(game, game.get_opponent(player), 0.8)
+
+    return player_score - opponent_score
+
+
+def heuristic_b(game, player):
+    """Calculate the heuristic value of a game state from the point of view
+    of the given player.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+
+    # Heuristic B - Compute the difference between the number of legal moves available to the players. Increase
+    # the score by the count of every opponenet's move that might be occupied by a player's move. Leaves with winning or
     # losing positions are scored +inf and -inf respectively.
     if game.is_loser(player):
         return NEGATIVE_INFINITY
@@ -55,7 +127,7 @@ def custom_score_3(game, player):
     return float(num_player_moves - num_openent_moves + num_same_moves)
 
 
-def custom_score_2(game, player):
+def heuristic_c(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -75,48 +147,8 @@ def custom_score_2(game, player):
         The heuristic value of the current game state to the specified player.
     """
 
-    # Heuristic #2 - Compute the difference between the number of legal moves available to the players. Increase
-    # the score by the sum of every opponenet's move that might be occupied by a player's move divided by the number
-    # of player's moves (approximating probability of taking those moves). Leaves with winning or losing positions
-    # are scored +inf and -inf respectively.
-    if game.is_loser(player):
-        return NEGATIVE_INFINITY
-
-    if game.is_winner(player):
-        return INFINITY
-
-    player_moves = game.get_legal_moves(player)
-    num_player_moves = len(player_moves) + 1  # Add bias of 1 to avoid divide by 0
-    opponent_moves = game.get_legal_moves(game.get_opponent(player))
-    num_openent_moves = len(opponent_moves) + 1  # Add bias of 1 to balance other bias
-    num_same_moves = len(set(player_moves).intersection(set(opponent_moves)))
-
-    return num_player_moves - num_openent_moves + (num_same_moves / num_player_moves)
-
-
-def custom_score_1(game, player):
-    """Calculate the heuristic value of a game state from the point of view
-    of the given player.
-
-    Parameters
-    ----------
-    game : `isolation.Board`
-        An instance of `isolation.Board` encoding the current state of the
-        game (e.g., player locations and blocked cells).
-
-    player : object
-        A player instance in the current game (i.e., an object corresponding to
-        one of the player objects `game.__player_1__` or `game.__player_2__`.)
-
-    Returns
-    ----------
-    float
-        The heuristic value of the current game state to the specified player.
-    """
-
-    # Heuristic #1 - Simple logic as described in the lectures. Compute the difference between
-    # the number of legal moves available to the players. Leaves with winning or losing positions
-    # are scored +inf and -inf respectively.
+    # Heuristic C - Compute the weighted difference between the number of legal moves available to the players.
+    #  Leaves with winning or losing positions are scored +inf and -inf respectively.
     if game.is_loser(player):
         return NEGATIVE_INFINITY
 
@@ -125,10 +157,11 @@ def custom_score_1(game, player):
 
     num_player_moves = len(game.get_legal_moves(player))
     num_opponent_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    return float(num_player_moves - num_opponent_moves)
+    return num_player_moves - 0.5 * num_opponent_moves
 
 
-custom_score = custom_score_2
+# Selects the heuristic to use
+custom_score = heuristic_a
 
 
 class CustomPlayer:
@@ -208,25 +241,25 @@ class CustomPlayer:
 
         self.time_left = time_left
 
-        # Assume the worst in case we time out
-        best_move = (-1, -1)
+        if len(legal_moves) == 0:
+            return -1, -1
+
+        # If we time out, at least we can pick a move
+        best_move = legal_moves[0]
 
         # Determine which method to call (keeping this out of the inner loop)
         method = self.minimax if self.method == 'minimax' else self.alphabeta
 
-        # TODO: finish this function!
-
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
-
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
+            depth = 1
             if self.iterative:
-                depth = 1
                 while True:
                     _, best_move = method(game, depth)
                     depth += 1
@@ -269,18 +302,18 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-
         best_move = (-1, -1)
 
         player = game.active_player if maximizing_player else game.inactive_player
 
         if depth == 0:
-            return (self.score(game, player), best_move)
+            # This is as deep as we'll go
+            return self.score(game, player), best_move
 
         moves = game.get_legal_moves()
         if len(moves) == 0:
-            return (self.score(game, player), best_move)
+            # There are no moves left.
+            return self.score(game, player), best_move
 
         if maximizing_player:
             best_score = NEGATIVE_INFINITY
@@ -299,8 +332,7 @@ class CustomPlayer:
                     best_score = forecast_score
                     best_move = move
 
-        # raise NotImplementedError
-        return (best_score, best_move)
+        return best_score, best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -337,17 +369,16 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
         best_move = (-1, -1)
 
         player = game.active_player if maximizing_player else game.inactive_player
 
         if depth == 0:
-            return (self.score(game, player), best_move)
+            return self.score(game, player), best_move
 
         moves = game.get_legal_moves()
         if len(moves) == 0:
-            return (self.score(game, player), best_move)
+            return self.score(game, player), best_move
 
         if maximizing_player:
             best_score = NEGATIVE_INFINITY
@@ -360,7 +391,7 @@ class CustomPlayer:
                     if best_score > alpha:
                         alpha = best_score
                         if beta <= alpha:
-                            break;
+                            break
         else:
             best_score = INFINITY
             for move in moves:
@@ -372,6 +403,6 @@ class CustomPlayer:
                     if best_score < beta:
                         beta = best_score
                         if beta <= alpha:
-                            break;
+                            break
 
-        return (best_score, best_move)
+        return best_score, best_move
