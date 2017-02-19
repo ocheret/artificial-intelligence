@@ -6,18 +6,18 @@ augment the test suite with your own test cases to further test your code.
 You must test your agent's strength against a set of agents with known
 relative strength using tournament.py and include the results in your report.
 """
-import random
 
 # Constants for extreme cases
 NEGATIVE_INFINITY = float("-inf")
 INFINITY = float("inf")
+
 
 class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
 
-def custom_score(game, player):
+def custom_score_3(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -37,16 +37,98 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
 
-    # Simple logic as described in the lectures
+    # Heuristic #3 - Compute the difference between the number of legal moves available to the players. Increase
+    # the score by the sum of every opponenet's move that might be occupied by a player's move. Leaves with winning or
+    # losing positions are scored +inf and -inf respectively.
     if game.is_loser(player):
         return NEGATIVE_INFINITY
 
     if game.is_winner(player):
         return INFINITY
 
-    own_moves = len(game.get_legal_moves(player))
-    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    return float(own_moves - opp_moves)
+    player_moves = game.get_legal_moves(player)
+    num_player_moves = len(player_moves)
+    opponent_moves = game.get_legal_moves(game.get_opponent(player))
+    num_openent_moves = len(opponent_moves)
+    num_same_moves = len(set(player_moves).intersection(set(opponent_moves)))
+
+    return float(num_player_moves - num_openent_moves + num_same_moves)
+
+
+def custom_score_2(game, player):
+    """Calculate the heuristic value of a game state from the point of view
+    of the given player.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+
+    # Heuristic #2 - Compute the difference between the number of legal moves available to the players. Increase
+    # the score by the sum of every opponenet's move that might be occupied by a player's move divided by the number
+    # of player's moves (approximating probability of taking those moves). Leaves with winning or losing positions
+    # are scored +inf and -inf respectively.
+    if game.is_loser(player):
+        return NEGATIVE_INFINITY
+
+    if game.is_winner(player):
+        return INFINITY
+
+    player_moves = game.get_legal_moves(player)
+    num_player_moves = len(player_moves) + 1  # Add bias of 1 to avoid divide by 0
+    opponent_moves = game.get_legal_moves(game.get_opponent(player))
+    num_openent_moves = len(opponent_moves) + 1  # Add bias of 1 to balance other bias
+    num_same_moves = len(set(player_moves).intersection(set(opponent_moves)))
+
+    return num_player_moves - num_openent_moves + (num_same_moves / num_player_moves)
+
+
+def custom_score_1(game, player):
+    """Calculate the heuristic value of a game state from the point of view
+    of the given player.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+
+    # Heuristic #1 - Simple logic as described in the lectures. Compute the difference between
+    # the number of legal moves available to the players. Leaves with winning or losing positions
+    # are scored +inf and -inf respectively.
+    if game.is_loser(player):
+        return NEGATIVE_INFINITY
+
+    if game.is_winner(player):
+        return INFINITY
+
+    num_player_moves = len(game.get_legal_moves(player))
+    num_opponent_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    return float(num_player_moves - num_opponent_moves)
+
+
+custom_score = custom_score_2
 
 
 class CustomPlayer:
@@ -147,7 +229,7 @@ class CustomPlayer:
                 depth = 1
                 while True:
                     _, best_move = method(game, depth)
-                    depth = depth + 1
+                    depth += 1
             else:
                 _, best_move = method(game, self.search_depth)
 
@@ -156,7 +238,7 @@ class CustomPlayer:
             pass
 
         # Return the best move from the last completed search iteration
-        #raise NotImplementedError
+        # raise NotImplementedError
         return best_move
 
     def minimax(self, game, depth, maximizing_player=True):
@@ -217,7 +299,7 @@ class CustomPlayer:
                     best_score = forecast_score
                     best_move = move
 
-        #raise NotImplementedError
+        # raise NotImplementedError
         return (best_score, best_move)
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
